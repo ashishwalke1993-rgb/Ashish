@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #e94560;
+      text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 2rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .score-box {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 0.6rem 1.4rem;
+      min-width: 80px;
+    }
+
+    .score-box .label {
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #aaa;
+    }
+
+    .score-box .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .score-box.x .value  { color: #e94560; }
+    .score-box.tie .value { color: #f5a623; }
+    .score-box.o .value  { color: #4fc3f7; }
+
+    .status {
+      font-size: 1.1rem;
+      margin-bottom: 1.2rem;
+      min-height: 1.5rem;
+      letter-spacing: 1px;
+      color: #ccc;
+      transition: color 0.3s;
+    }
+
+    .status.winner-x { color: #e94560; font-weight: 700; }
+    .status.winner-o { color: #4fc3f7; font-weight: 700; }
+    .status.draw     { color: #f5a623; font-weight: 700; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 10px;
+    }
+
+    .cell {
+      width: 110px;
+      height: 110px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) {
+      background: rgba(255, 255, 255, 0.14);
+      transform: scale(1.05);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .cell.taken {
+      cursor: default;
+    }
+
+    .cell.x {
+      color: #e94560;
+      text-shadow: 0 0 12px rgba(233, 69, 96, 0.6);
+    }
+
+    .cell.o {
+      color: #4fc3f7;
+      text-shadow: 0 0 12px rgba(79, 195, 247, 0.6);
+    }
+
+    .cell.winning {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.4);
+      animation: pulse 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { box-shadow: 0 0 8px rgba(255,255,255,0.2); }
+      to   { box-shadow: 0 0 24px rgba(255,255,255,0.5); }
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.8rem;
+    }
+
+    button {
+      padding: 0.65rem 1.6rem;
+      border: none;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #restart-btn {
+      background: linear-gradient(135deg, #e94560, #c0392b);
+      color: #fff;
+    }
+
+    #reset-scores-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ccc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .turn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 0.4rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.x { background: #e94560; box-shadow: 0 0 6px #e94560; }
+    .dot.o { background: #4fc3f7; box-shadow: 0 0 6px #4fc3f7; }
+  </style>
+</head>
+<body>
+  <h1>Tic Tac Toe</h1>
+
+  <div class="scoreboard">
+    <div class="score-box x">
+      <div class="label">Player X</div>
+      <div class="value" id="score-x">0</div>
+    </div>
+    <div class="score-box tie">
+      <div class="label">Draws</div>
+      <div class="value" id="score-tie">0</div>
+    </div>
+    <div class="score-box o">
+      <div class="label">Player O</div>
+      <div class="value" id="score-o">0</div>
+    </div>
+  </div>
+
+  <div class="turn-indicator">
+    <span class="dot x" id="turn-dot"></span>
+    <span id="turn-text">Player X's turn</span>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="board" id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <div class="actions">
+    <button id="restart-btn">New Game</button>
+    <button id="reset-scores-btn">Reset Scores</button>
+  </div>
+
+  <script>
+    const WINNING_COMBOS = [
+      [0,1,2], [3,4,5], [6,7,8], // rows
+      [0,3,6], [1,4,7], [2,5,8], // cols
+      [0,4,8], [2,4,6]            // diagonals
+    ];
+
+    let board = Array(9).fill(null);
+    let currentPlayer = 'X';
+    let gameOver = false;
+    let scores = { X: 0, O: 0, tie: 0 };
+
+    const cells = document.querySelectorAll('.cell');
+    const statusEl = document.getElementById('status');
+    const turnDot = document.getElementById('turn-dot');
+    const turnText = document.getElementById('turn-text');
+    const scoreX = document.getElementById('score-x');
+    const scoreO = document.getElementById('score-o');
+    const scoreTie = document.getElementById('score-tie');
+
+    function updateTurnIndicator() {
+      turnDot.className = 'dot ' + currentPlayer.toLowerCase();
+      turnText.textContent = `Player ${currentPlayer}'s turn`;
+    }
+
+    function checkWinner() {
+      for (const combo of WINNING_COMBOS) {
+        const [a, b, c] = combo;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return { winner: board[a], combo };
+        }
+      }
+      if (board.every(cell => cell !== null)) return { winner: null, draw: true };
+      return null;
+    }
+
+    function handleClick(e) {
+      const idx = parseInt(e.target.dataset.index);
+      if (gameOver || board[idx]) return;
+
+      board[idx] = currentPlayer;
+      const cell = e.target;
+      cell.textContent = currentPlayer;
+      cell.classList.add('taken', currentPlayer.toLowerCase());
+
+      const result = checkWinner();
+
+      if (result) {
+        gameOver = true;
+        if (result.winner) {
+          result.combo.forEach(i => cells[i].classList.add('winning'));
+          statusEl.textContent = `Player ${result.winner} wins!`;
+          statusEl.className = `status winner-${result.winner.toLowerCase()}`;
+          scores[result.winner]++;
+          updateScores();
+        } else {
+          statusEl.textContent = "It's a draw!";
+          statusEl.className = 'status draw';
+          scores.tie++;
+          updateScores();
+        }
+        // Hide turn indicator
+        document.querySelector('.turn-indicator').style.opacity = '0';
+      } else {
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        updateTurnIndicator();
+      }
+    }
+
+    function updateScores() {
+      scoreX.textContent = scores.X;
+      scoreO.textContent = scores.O;
+      scoreTie.textContent = scores.tie;
+    }
+
+    function restartGame() {
+      board = Array(9).fill(null);
+      currentPlayer = 'X';
+      gameOver = false;
+      statusEl.textContent = '';
+      statusEl.className = 'status';
+      document.querySelector('.turn-indicator').style.opacity = '1';
+      updateTurnIndicator();
+
+      cells.forEach(cell => {
+        cell.textContent = '';
+        cell.className = 'cell';
+      });
+    }
+
+    function resetScores() {
+      scores = { X: 0, O: 0, tie: 0 };
+      updateScores();
+      restartGame();
+    }
+
+    cells.forEach(cell => cell.addEventListener('click', handleClick));
+    document.getElementById('restart-btn').addEventListener('click', restartGame);
+    document.getElementById('reset-scores-btn').addEventListener('click', resetScores);
+
+    updateTurnIndicator();
+  </script>
+</body>
+</html>

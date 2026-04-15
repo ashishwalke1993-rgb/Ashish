@@ -1,0 +1,33 @@
+name: Daily Tech & AI News Email
+
+on:
+  # Runs every day at 2:30 UTC = 8:00 AM IST
+  schedule:
+    - cron: "30 2 * * *"
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  send-news-email:
+    name: Fetch News & Send Email
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r daily_news/requirements.txt
+
+      - name: Run news emailer
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ashishwalke1993@gmail.com
+        run: python daily_news/fetch_news.py

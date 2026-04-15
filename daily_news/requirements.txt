@@ -1,0 +1,6 @@
+# No third-party packages needed.
+# The script uses only Python standard library modules:
+#   - urllib (HTTP requests)
+#   - xml.etree.ElementTree (RSS parsing)
+#   - smtplib + email (sending email)
+#   - re, datetime, os (utilities)

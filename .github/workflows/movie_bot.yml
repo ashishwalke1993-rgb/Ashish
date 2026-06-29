@@ -3,7 +3,7 @@ name: Daily Movie Bot
 on:
   schedule:
     - cron: '30 4 * * *'  # 4:30 AM UTC = 10:00 AM IST
-  workflow_dispatch:       # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   send-movie-digest:
@@ -21,6 +21,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Restore sent movies cache
+        uses: actions/cache@v3
+        with:
+          path: movie_bot/sent_movies.json
+          key: sent-movies-cache
+          restore-keys: sent-movies-cache
+
       - name: Run Movie Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -28,6 +35,12 @@ jobs:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           REDDIT_USER_AGENT: MovieBot/1.0
           TIMEZONE: Asia/Kolkata
-          DAYS_LOOKBACK: '7'
+          DAYS_LOOKBACK: '14'
           MAX_MOVIES_PER_RUN: '3'
         run: python -m movie_bot.run --now
+
+      - name: Save sent movies cache
+        uses: actions/cache@v3
+        with:
+          path: movie_bot/sent_movies.json
+          key: sent-movies-cache

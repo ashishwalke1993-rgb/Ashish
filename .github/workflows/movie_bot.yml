@@ -3,7 +3,7 @@ name: Daily Movie Bot
 on:
   schedule:
     - cron: '30 4 * * *'  # 4:30 AM UTC = 10:00 AM IST
-  workflow_dispatch:       # allows manual trigger
+  workflow_dispatch:       # allows manual trigger from GitHub UI
 
 jobs:
   send-movie-digest:

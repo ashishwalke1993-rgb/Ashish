@@ -1,0 +1,31 @@
+name: Daily Movie Bot
+
+on:
+  schedule:
+    - cron: '30 4 * * *'  # 4:30 AM UTC = 10:00 AM IST
+  workflow_dispatch:       # allows manual trigger
+
+jobs:
+  send-movie-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Movie Bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          REDDIT_USER_AGENT: MovieBot/1.0
+          TIMEZONE: Asia/Kolkata
+          DAYS_LOOKBACK: '7'
+          MAX_MOVIES_PER_RUN: '3'
+        run: python -m movie_bot.run --now

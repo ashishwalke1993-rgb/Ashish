@@ -5,6 +5,9 @@ on:
     - cron: '30 4 * * *'  # 4:30 AM UTC = 10:00 AM IST
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   send-movie-digest:
     runs-on: ubuntu-latest
@@ -21,13 +24,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore sent movies cache
-        uses: actions/cache@v3
-        with:
-          path: movie_bot/sent_movies.json
-          key: sent-movies-cache
-          restore-keys: sent-movies-cache
-
       - name: Run Movie Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -39,8 +35,14 @@ jobs:
           MAX_MOVIES_PER_RUN: '3'
         run: python -m movie_bot.run --now
 
-      - name: Save sent movies cache
-        uses: actions/cache@v3
-        with:
-          path: movie_bot/sent_movies.json
-          key: sent-movies-cache
+      - name: Save sent movies cache back to repo
+        run: |
+          git config user.name "movie-bot"
+          git config user.email "movie-bot@users.noreply.github.com"
+          git add movie_bot/sent_movies.json
+          if ! git diff --staged --quiet; then
+            git commit -m "Update sent movies cache [skip ci]"
+            git push origin HEAD:claude/kind-volta-ihkau1
+          else
+            echo "No changes to sent_movies.json"
+          fi

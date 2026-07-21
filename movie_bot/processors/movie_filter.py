@@ -20,6 +20,13 @@ def _save_sent(cache: dict) -> None:
         json.dump(cache, f)
 
 
+def remove_from_sent(tmdb_id: str) -> None:
+    """Remove a movie from the sent cache so it can be retried tomorrow."""
+    cache = _load_sent()
+    cache.pop(str(tmdb_id), None)
+    _save_sent(cache)
+
+
 def _purge_old(cache: dict, keep_days: int = 30) -> dict:
     """Remove entries older than keep_days to keep the file small."""
     cutoff = str(date.today() - timedelta(days=keep_days))

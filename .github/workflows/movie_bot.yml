@@ -2,7 +2,7 @@ name: Daily Movie Bot
 
 on:
   schedule:
-    - cron: '30 4 * * *'  # 4:30 AM UTC = 10:00 AM IST
+    - cron: '0 2 * * *'  # 2:00 AM UTC = 7:30 AM IST (fires ~10 AM IST after GitHub delay)
   workflow_dispatch:
 
 permissions:

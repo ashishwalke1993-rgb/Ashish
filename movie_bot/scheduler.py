@@ -8,7 +8,7 @@ import pytz
 from movie_bot.config import Config
 from movie_bot.fetchers.tmdb_fetcher import TMDBFetcher
 from movie_bot.fetchers.reddit_fetcher import RedditFetcher, RedditFallbackFetcher
-from movie_bot.processors.movie_filter import MovieFilter, remove_from_sent
+from movie_bot.processors.movie_filter import MovieFilter
 from movie_bot.processors.sentiment import SentimentProcessor
 from movie_bot.processors.enricher import MovieEnricher
 from movie_bot.formatters.telegram_formatter import TelegramFormatter
@@ -64,13 +64,8 @@ class MovieBotScheduler:
         enriched = []
         for raw in recent:
             movie = enricher.enrich(raw)
-            if not movie:
-                continue
-            if not (movie.reddit_reviews or movie.imdb_user_reviews):
-                logger.info(f"Skipping '{movie.title}' — no reviews yet, will retry tomorrow.")
-                remove_from_sent(str(movie.tmdb_id))
-                continue
-            enriched.append(movie)
+            if movie:
+                enriched.append(movie)
 
         sender.run_sync(sender.send_daily_digest(enriched, formatter))
         logger.info(f"Daily digest sent with {len(enriched)} movies.")

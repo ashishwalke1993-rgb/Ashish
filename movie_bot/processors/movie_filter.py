@@ -5,9 +5,12 @@ from typing import List
 
 SENT_CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "sent_movies.json")
 
+# Days after release to send each review
+FIRST_REVIEW_WINDOW = (1, 3)   # day 1–3 after release
+SECOND_REVIEW_WINDOW = (4, 6)  # day 4–6 after release
+
 
 def _load_sent() -> dict:
-    """Load {tmdb_id: date_sent} cache from disk."""
     try:
         with open(SENT_CACHE_FILE, "r") as f:
             return json.load(f)
@@ -21,34 +24,49 @@ def _save_sent(cache: dict) -> None:
 
 
 def remove_from_sent(tmdb_id: str) -> None:
-    """Remove a movie from the sent cache so it can be retried tomorrow."""
+    """Remove a movie from the sent cache so it can be retried."""
     cache = _load_sent()
     cache.pop(str(tmdb_id), None)
     _save_sent(cache)
 
 
+def _normalize_record(v) -> dict:
+    """Migrate old string format {"id": "date"} → {"id": {"first": "date"}}."""
+    if isinstance(v, str):
+        return {"first": v}
+    return v if isinstance(v, dict) else {}
+
+
 def _purge_old(cache: dict, keep_days: int = 30) -> dict:
-    """Remove entries older than keep_days to keep the file small."""
-    cutoff = str(date.today() - timedelta(days=keep_days))
-    return {k: v for k, v in cache.items() if v >= cutoff}
+    cutoff = date.today() - timedelta(days=keep_days)
+    result = {}
+    for k, v in cache.items():
+        record = _normalize_record(v)
+        dates = []
+        for d in record.values():
+            try:
+                dates.append(date.fromisoformat(d))
+            except (ValueError, TypeError):
+                pass
+        if dates and max(dates) >= cutoff:
+            result[k] = record
+    return result
 
 
 class MovieFilter:
     def filter_recent(
         self,
         movies: List[dict],
-        days_lookback: int = 14,
+        days_lookback: int = 14,  # kept for API compatibility
         max_movies: int = 5,
     ) -> List[dict]:
         today = date.today()
-        cutoff = today - timedelta(days=days_lookback)
-
-        # Load previously sent movies
         sent_cache = _load_sent()
         sent_cache = _purge_old(sent_cache)
 
         seen_ids = set()
-        filtered = []
+        candidates = []
+
         for movie in movies:
             tmdb_id = str(movie.get("id", ""))
             release_str = movie.get("release_date", "")
@@ -59,24 +77,33 @@ class MovieFilter:
             except ValueError:
                 continue
 
-            # Only include movies within lookback window
-            if not (cutoff <= release <= today):
-                continue
+            days_since = (today - release).days
+            record = _normalize_record(sent_cache.get(tmdb_id, {}))
 
-            # Skip movies already sent before
-            if tmdb_id in sent_cache:
-                continue
+            lo1, hi1 = FIRST_REVIEW_WINDOW
+            lo2, hi2 = SECOND_REVIEW_WINDOW
 
-            filtered.append(movie)
-            seen_ids.add(tmdb_id)
+            if lo1 <= days_since <= hi1 and "first" not in record:
+                candidates.append(movie)
+                seen_ids.add(tmdb_id)
+            elif lo2 <= days_since <= hi2 and "first" in record and "second" not in record:
+                candidates.append(movie)
+                seen_ids.add(tmdb_id)
 
-        filtered.sort(key=lambda m: m.get("release_date", ""), reverse=True)
-        result = filtered[:max_movies]
+        candidates.sort(key=lambda m: m.get("release_date", ""), reverse=True)
+        result = candidates[:max_movies]
 
-        # Mark these movies as sent today
         today_str = str(today)
         for movie in result:
-            sent_cache[str(movie.get("id", ""))] = today_str
-        _save_sent(sent_cache)
+            tmdb_id = str(movie.get("id", ""))
+            record = _normalize_record(sent_cache.get(tmdb_id, {}))
+            days_since = (today - date.fromisoformat(movie["release_date"])).days
+            lo1, hi1 = FIRST_REVIEW_WINDOW
+            if lo1 <= days_since <= hi1:
+                record["first"] = today_str
+            else:
+                record["second"] = today_str
+            sent_cache[tmdb_id] = record
 
+        _save_sent(sent_cache)
         return result

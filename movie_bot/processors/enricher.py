@@ -21,10 +21,12 @@ class MovieEnricher:
         tmdb: TMDBFetcher,
         sentiment: SentimentProcessor,
         reddit_fetcher=None,
+        youtube_fetcher=None,
     ):
         self.tmdb = tmdb
         self.sentiment = sentiment
         self.reddit = reddit_fetcher
+        self.youtube = youtube_fetcher
 
     def enrich(self, raw_movie: dict) -> Optional[MovieData]:
         tmdb_id = raw_movie["id"]
@@ -51,6 +53,7 @@ class MovieEnricher:
         director_works: list = []
         reddit_reviews: list = []
         imdb_reviews: list = []
+        youtube_reviews: list = []
 
         def fetch_director_works():
             if director_id:
@@ -62,6 +65,11 @@ class MovieEnricher:
                 return self.reddit.get_audience_reviews(title, release_date.year)
             return []
 
+        def fetch_youtube():
+            if self.youtube:
+                return self.youtube.get_reviews(title)
+            return []
+
         def fetch_imdb():
             return self._get_imdb_reviews(imdb_id) if imdb_id else []
 
@@ -69,9 +77,10 @@ class MovieEnricher:
             "director": fetch_director_works,
             "reddit": fetch_reddit,
             "imdb": fetch_imdb,
+            "youtube": fetch_youtube,
         }
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             futures = {executor.submit(fn): name for name, fn in tasks.items()}
             for future in as_completed(futures):
                 name = futures[future]
@@ -83,14 +92,19 @@ class MovieEnricher:
                         reddit_reviews.extend(result)
                     elif name == "imdb":
                         imdb_reviews.extend(result)
+                    elif name == "youtube":
+                        youtube_reviews.extend(result)
                 except Exception as e:
                     logger.warning(f"Fetch '{name}' failed for {title}: {e}")
 
         tmdb_score = details.get("vote_average", 0.0)
         imdb_score = self._get_imdb_score(imdb_id)
 
+        # Combine all audience reviews: Reddit + YouTube comments
+        all_audience_reviews = reddit_reviews + youtube_reviews
+
         verdict, theater_rec = self.sentiment.compute_verdict(
-            reddit_reviews, imdb_reviews, tmdb_score, imdb_score, genres
+            all_audience_reviews, imdb_reviews, tmdb_score, imdb_score, genres
         )
 
         return MovieData(
@@ -109,7 +123,7 @@ class MovieEnricher:
             tmdb_score=round(tmdb_score, 1),
             imdb_id=imdb_id,
             imdb_score=imdb_score,
-            reddit_reviews=reddit_reviews[:5],
+            reddit_reviews=all_audience_reviews[:5],
             imdb_user_reviews=imdb_reviews[:5],
             verdict=verdict,
             theater_recommendation=theater_rec,

@@ -8,6 +8,7 @@ import pytz
 from movie_bot.config import Config
 from movie_bot.fetchers.tmdb_fetcher import TMDBFetcher
 from movie_bot.fetchers.reddit_fetcher import RedditFetcher, RedditFallbackFetcher
+from movie_bot.fetchers.youtube_fetcher import YouTubeFetcher
 from movie_bot.processors.movie_filter import MovieFilter
 from movie_bot.processors.sentiment import SentimentProcessor
 from movie_bot.processors.enricher import MovieEnricher
@@ -43,8 +44,14 @@ class MovieBotScheduler:
             logger.info("Reddit credentials not set — using public fallback.")
             reddit_fetcher = RedditFallbackFetcher()
 
+        youtube_fetcher = YouTubeFetcher(config.youtube_api_key) if config.youtube_enabled else None
+        if youtube_fetcher:
+            logger.info("YouTube fetcher enabled.")
+        else:
+            logger.info("YOUTUBE_API_KEY not set — skipping YouTube reviews.")
+
         sentiment = SentimentProcessor()
-        enricher = MovieEnricher(tmdb, sentiment, reddit_fetcher)
+        enricher = MovieEnricher(tmdb, sentiment, reddit_fetcher, youtube_fetcher)
         movie_filter = MovieFilter()
         formatter = TelegramFormatter()
         sender = TelegramSender(config.telegram_token, config.chat_id)

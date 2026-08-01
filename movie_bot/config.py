@@ -13,6 +13,7 @@ class Config:
         self.reddit_client_id = os.getenv("REDDIT_CLIENT_ID", "")
         self.reddit_client_secret = os.getenv("REDDIT_CLIENT_SECRET", "")
         self.reddit_user_agent = os.getenv("REDDIT_USER_AGENT", "MovieBot/1.0")
+        self.youtube_api_key = os.getenv("YOUTUBE_API_KEY", "")
 
         self.timezone = os.getenv("TIMEZONE", "Asia/Kolkata")
         self.send_hour = int(os.getenv("SEND_HOUR", "10"))
@@ -29,3 +30,7 @@ class Config:
     @property
     def reddit_enabled(self) -> bool:
         return bool(self.reddit_client_id and self.reddit_client_secret)
+
+    @property
+    def youtube_enabled(self) -> bool:
+        return bool(self.youtube_api_key)

@@ -67,12 +67,12 @@ class YouTubeFetcher:
         return best["id"]
 
     def _fetch_comments(self, video_id: str, max_comments: int) -> List[str]:
-        """Fetch top comments from a YouTube video, filtered for quality."""
+        """Fetch top comments from a YouTube video, filtered for relevance."""
         params = {
             "part": "snippet",
             "videoId": video_id,
             "order": "relevance",
-            "maxResults": 20,
+            "maxResults": 50,
             "key": self.api_key,
         }
         resp = requests.get(COMMENTS_URL, params=params, timeout=10)
@@ -83,10 +83,50 @@ class YouTubeFetcher:
         for item in items:
             text = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
             text = text.strip()
-            # Filter: meaningful length, not just emojis or very short
-            if len(text) >= 40 and len(text) <= 400:
+            if self._is_relevant_comment(text):
                 comments.append(text)
             if len(comments) >= max_comments:
                 break
 
         return comments
+
+    _SPAM_PATTERNS = [
+        "subscribe", "sub to me", "check out my", "visit my channel",
+        "follow me", "like and subscribe", "hit the bell", "notification",
+        "giveaway", "click here", "link in bio", "promo code",
+        "who is watching", "anyone watching in", "watching in 20",
+        "early squad", "first comment", "came here from",
+    ]
+
+    _REVIEW_KEYWORDS = [
+        "movie", "film", "acting", "actor", "actress", "director", "scene",
+        "story", "plot", "character", "performance", "watch", "cinema",
+        "theatre", "theater", "screenplay", "dialogue", "climax",
+        "interval", "first half", "second half", "bgm", "music",
+        "visuals", "direction", "rating", "recommend", "worth",
+        "must watch", "boring", "amazing", "excellent", "average",
+        "disappointing", "entertaining", "emotional", "action", "comedy",
+        "drama", "thriller", "good", "bad", "great", "worst", "best",
+        "overall", "review", "opinion", "verdict",
+    ]
+
+    def _is_relevant_comment(self, text: str) -> bool:
+        if len(text) < 50 or len(text) > 400:
+            return False
+
+        lower = text.lower()
+
+        # Reject spam / self-promotion
+        if any(p in lower for p in self._SPAM_PATTERNS):
+            return False
+
+        # Reject if more than 40% of characters are emojis/non-ASCII
+        non_ascii = sum(1 for c in text if ord(c) > 127)
+        if non_ascii / len(text) > 0.4:
+            return False
+
+        # Must contain at least one review-related keyword
+        if not any(kw in lower for kw in self._REVIEW_KEYWORDS):
+            return False
+
+        return True
